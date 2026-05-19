@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Character AI - Futuristic Persona Chat Portal",
-  description: "Connect with high-fidelity pre-defined or custom-created AI characters, powered by Vercel serverless functions and Supabase.",
+  title: "Open Character AI - Futuristic Persona Chat Portal",
+  description: "Open-source Character.AI alternative — chat with high-fidelity pre-defined or custom-created AI personas, with per-chat LLM tuning, powered by Next.js, Prisma, and Supabase.",
 };
 
 import { Providers } from "@/components/Providers";

@@ -1,8 +1,8 @@
-# Character AI Studio 🤖✨
+# Open Character AI 🤖✨
 
-An interactive, high-fidelity AI companion portal where users can explore preset personas, forge custom AI characters, customize LLM parameters, and purchase premium interaction tokens.
+An open-source Character.AI alternative — an interactive, high-fidelity AI companion portal where users can explore preset personas, forge custom AI characters, fine-tune LLM parameters per chat, and purchase premium interaction credits.
 
-![Character AI Studio Screenshot](https://cdn.muapi.ai/data/2/566606463946/Screenshot_2026-05-19_174317.png)
+![Open Character AI Screenshot](https://cdn.muapi.ai/data/2/566606463946/Screenshot_2026-05-19_174317.png)
 
 
 ## 🚀 Features
