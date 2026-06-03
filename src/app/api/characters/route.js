@@ -435,6 +435,7 @@ async function ensureDefaultCharacters() {
 }
 
 export async function GET() {
+  let customList = [];
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
@@ -443,7 +444,7 @@ export async function GET() {
     ensureDefaultCharacters().catch(console.error);
 
     // Fetch only user-created/custom characters
-    const customList = await prisma.character.findMany({
+    customList = await prisma.character.findMany({
       where: {
         isCustom: true,
         OR: [
@@ -453,15 +454,14 @@ export async function GET() {
       },
       orderBy: { createdAt: "asc" },
     });
-
-    // Combine hardcoded defaults with DB custom characters
-    const combinedList = [...DEFAULT_CHARACTERS, ...customList];
-
-    return NextResponse.json({ characters: combinedList });
   } catch (error) {
-    console.error("[CHARACTERS_GET_ERROR]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[CHARACTERS_GET_WARNING] Database access failed, falling back to default characters:", error);
   }
+
+  // Combine hardcoded defaults with DB custom characters
+  const combinedList = [...DEFAULT_CHARACTERS, ...customList];
+
+  return NextResponse.json({ characters: combinedList });
 }
 
 export async function POST(req) {
