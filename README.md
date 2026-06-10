@@ -2,6 +2,14 @@
 
 > **An interactive, high-fidelity AI companion portal where users explore preset personas, forge custom AI characters, and fine-tune LLM parameters per chat.** Built with Next.js (App Router), this application is a self-contained SaaS boilerplate featuring user authentication, credit billing, and a beautiful chat interface powered by the MuAPI engine.
 
+<p align="center">
+  <a href="https://github.com/Anil-matcha/awesome-generative-ai-apps">
+    <img src="https://img.shields.io/badge/Part%20of-Awesome%20Generative%20AI%20Apps-FFD700?style=for-the-badge&logo=github&logoColor=black" alt="Awesome Generative AI Apps">
+  </a>
+</p>
+
+> 🎨 **[Explore 50+ more open-source AI apps →](https://github.com/Anil-matcha/awesome-generative-ai-apps)**
+
 ## 🌐 Project Details
 
 **GitHub Repository:** [github.com/Anil-matcha/open-character-ai](https://github.com/Anil-matcha/open-character-ai)
