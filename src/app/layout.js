@@ -1,15 +1,15 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import config from "@/lib/config";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -22,14 +22,9 @@ export default function RootLayout({ children }) {
   const theme = config?.theme || "slate-indigo";
 
   return (
-    <html lang="en" className="h-full scroll-smooth" data-theme={theme}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" className={`h-full scroll-smooth ${inter.variable} ${outfit.variable}`} data-theme={theme}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col antialiased bg-bg-page text-primary-text`}
+        className={`${inter.className} min-h-full flex flex-col antialiased bg-bg-page text-primary-text`}
       >
         <Providers>
           <main className="relative z-10 flex-1 flex flex-col">{children}</main>
