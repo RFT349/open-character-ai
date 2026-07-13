@@ -13,6 +13,7 @@ export default function ChatPage({ params }) {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [creditModal, setCreditModal] = useState(null);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -63,7 +64,11 @@ export default function ChatPage({ params }) {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "发送失败");
+        if (res.status === 402) {
+          setCreditModal(data.error || "好感度不足");
+        } else {
+          alert(data.error || "发送失败");
+        }
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
         setInputMessage(text);
         setIsTyping(false);
@@ -103,6 +108,15 @@ export default function ChatPage({ params }) {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+  };
+
+  const parseCreditError = (msg) => {
+    const needMatch = msg.match(/需要(\d+)/);
+    const remainMatch = msg.match(/仅剩(\d+)/);
+    return {
+      need: needMatch ? needMatch[1] : "?",
+      remain: remainMatch ? remainMatch[1] : "0",
+    };
   };
 
   if (authStatus === "loading") {
@@ -304,6 +318,73 @@ export default function ChatPage({ params }) {
           </svg>
         </button>
       </div>
+
+      {/* Credit insufficient modal */}
+      {creditModal && (() => {
+        const { need, remain } = parseCreditError(creditModal);
+        return (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setCreditModal(null); }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div
+              style={{
+                width: 270,
+                background: "#fff",
+                borderRadius: 12,
+                border: "2px solid #000",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ padding: "24px 20px 20px", textAlign: "center" }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#000", marginBottom: 16 }}>
+                  羊顺利提醒您
+                </div>
+                <div style={{ fontSize: 15, color: "#000", lineHeight: 1.7 }}>
+                  好感度不足，需要<span style={{ color: "#1890ff", fontWeight: 600 }}>{need}</span>好感度，{"\n"}当前仅剩<span style={{ color: "#1890ff", fontWeight: 600 }}>{remain}</span>好感度。
+                </div>
+              </div>
+              <div style={{ display: "flex", borderTop: "1px solid #000" }}>
+                <div
+                  onClick={() => setCreditModal(null)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    textAlign: "center",
+                    fontSize: 16,
+                    color: "#000",
+                    cursor: "pointer",
+                    borderRight: "1px solid #000",
+                  }}
+                >
+                  确定
+                </div>
+                <div
+                  onClick={() => { setCreditModal(null); window.open("https://www.fakala.cc/details/469F72E6", "_blank"); }}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    textAlign: "center",
+                    fontSize: 16,
+                    color: "#000",
+                    cursor: "pointer",
+                  }}
+                >
+                  获取好感度
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Animation keyframes */}
       <style>{`

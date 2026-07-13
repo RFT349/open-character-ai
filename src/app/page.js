@@ -84,7 +84,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setRedeemMsg("兑换成功！+" + data.creditsAdded + "积分");
+        setRedeemMsg("兑换成功！+" + data.creditsAdded + "好感度");
         setRedeemCode("");
         fetchCredits();
       } else {
@@ -294,7 +294,7 @@ function MyTab({ username, credits, redeemCode, setRedeemCode, redeemMsg, onRede
         </div>
         <div style={{ marginLeft: 14, flex: 1 }}>
           <div style={{ fontSize: 17, color: "#000", fontWeight: 500, marginBottom: 4 }}>{username}</div>
-          <div style={{ fontSize: 14, color: "#07C160" }}>积分：{credits}</div>
+          <div style={{ fontSize: 14, color: "#07C160" }}>好感度：{credits}</div>
         </div>
       </div>
 
@@ -307,7 +307,7 @@ function MyTab({ username, credits, redeemCode, setRedeemCode, redeemMsg, onRede
           marginBottom: 16,
         }}
       >
-        <div style={{ fontSize: 15, fontWeight: 500, color: "#000", marginBottom: 12 }}>兑换积分</div>
+        <div style={{ fontSize: 15, fontWeight: 500, color: "#000", marginBottom: 12 }}>兑换好感度</div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             type="text"

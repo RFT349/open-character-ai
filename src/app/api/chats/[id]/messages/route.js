@@ -80,7 +80,7 @@ export async function POST(req, { params }) {
     }
 
     if (user.credits < cost) {
-      const errMsg = "积分不足，需要" + cost + "积分，当前仅剩" + user.credits + "积分";
+      const errMsg = "好感度不足，需要" + cost + "好感度，当前仅剩" + user.credits + "好感度";
       return NextResponse.json({ error: errMsg }, { status: 402 });
     }
 
