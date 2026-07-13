@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-const BURN_DELAY = 10000; // 10秒阅后即焚
+const BURN_DELAY = 60000; // 60秒阅后即焚
 
 export default function ChatPage({ params }) {
   const resolvedParams = use(params);
