@@ -9,13 +9,16 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const characters = await prisma.character.findMany({
-      where: { isCustom: false },
-      orderBy: { createdAt: "asc" },
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, name: true, credits: true, favorability: true, freeCreditsUsed: true },
     });
-    return NextResponse.json({ characters });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    return NextResponse.json(user);
   } catch (error) {
-    console.error("[CHARACTERS_GET_ERROR]", error);
+    console.error("[USER_GET_ERROR]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -6,17 +6,18 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const chatsList = await prisma.chat.findMany({
+    const chats = await prisma.chat.findMany({
       where: { userId: session.user.id },
-      include: { character: true },
-      orderBy: { createdAt: "desc" }
+      include: {
+        character: true,
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
     });
-
-    return NextResponse.json({ chats: chatsList });
+    return NextResponse.json({ chats });
   } catch (error) {
     console.error("[CHATS_GET_ERROR]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,38 +27,23 @@ export async function GET() {
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { character_id, forceNew } = await req.json();
+    const { character_id } = await req.json();
     if (!character_id) {
-      return NextResponse.json({ error: "Missing character ID" }, { status: 400 });
+      return NextResponse.json({ error: "character_id is required" }, { status: 400 });
     }
-
-    // Check if an active chat session already exists for this user and character
-    let chat = null;
-    if (!forceNew) {
-      chat = await prisma.chat.findFirst({
-        where: {
-          userId: session.user.id,
-          characterId: character_id
-        },
-        include: { character: true }
-      });
-    }
-
-    // If no chat session, instantiate one
+    let chat = await prisma.chat.findFirst({
+      where: { userId: session.user.id, characterId: character_id },
+      include: { character: true },
+    });
     if (!chat) {
       chat = await prisma.chat.create({
-        data: {
-          userId: session.user.id,
-          characterId: character_id
-        },
-        include: { character: true }
+        data: { userId: session.user.id, characterId: character_id },
+        include: { character: true },
       });
     }
-
     return NextResponse.json({ chat });
   } catch (error) {
     console.error("[CHATS_POST_ERROR]", error);

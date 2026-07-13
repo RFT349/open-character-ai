@@ -146,3 +146,12 @@
 .animate-gradient-x {
   animation: gradientX 6s ease infinite;
 }
+
+/* Prevent zoom on all devices */
+html {
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
+}
+* {
+  touch-action: manipulation;
+}

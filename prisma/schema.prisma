@@ -38,7 +38,10 @@ model User {
   email         String?     @unique
   emailVerified DateTime?
   image         String?
-  credits       Int         @default(50) // Seeds with 50 credits to try LLMs
+  credits       Int         @default(20)
+  freeCreditsUsed Int       @default(0)
+  favorability  Int         @default(0)
+  password      String?
   accounts      Account[]
   sessions      Session[]
   chats         Chat[]
@@ -83,7 +86,7 @@ model Chat {
 model Message {
   id        String   @id @default(cuid())
   chatId    String
-  role      String   // "user" or "assistant"
+  role      String
   content   String
   imageUrl  String?
   createdAt DateTime @default(now())
@@ -103,7 +106,6 @@ model Creation {
   status       String   @default("processing")
   error        String?  @db.Text
   
-  // Extra columns to prevent database drops
   duration     String?
   inputImages  String?  @db.Text
   mode         String?
@@ -113,6 +115,16 @@ model Creation {
   url          String?  @db.Text
   
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RedeemCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  credits   Int
+  used      Boolean  @default(false)
+  usedBy    String?
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
 }
 
 model VerificationToken {
