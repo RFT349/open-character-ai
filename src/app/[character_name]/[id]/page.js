@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useRef, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+
+const BURN_DELAY = 10000; // 10秒阅后即焚
 
 export default function ChatPage({ params }) {
   const resolvedParams = use(params);
@@ -14,6 +16,7 @@ export default function ChatPage({ params }) {
   const [isTyping, setIsTyping] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [creditModal, setCreditModal] = useState(null);
+  const [burnTimers, setBurnTimers] = useState({});
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -31,12 +34,28 @@ export default function ChatPage({ params }) {
     }
   }, [messages, isTyping]);
 
+  // Clean up burn timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(burnTimers).forEach(id => clearTimeout(id));
+    };
+  }, []);
+
+  const scheduleBurn = useCallback((msgId) => {
+    const timer = setTimeout(() => {
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+    }, BURN_DELAY);
+    setBurnTimers((prev) => ({ ...prev, [msgId]: timer }));
+  }, []);
+
   const fetchMessages = async () => {
     try {
       const res = await fetch("/api/chats/" + chatId + "/messages");
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages || []);
+        // Only load user messages, assistant messages are burned
+        const userOnly = (data.messages || []).filter((m) => m.role === "user");
+        setMessages(userOnly);
       }
     } catch (err) {
       console.error("Failed to fetch messages", err);
@@ -91,7 +110,12 @@ export default function ChatPage({ params }) {
       for (let i = 0; i < assistantMsgs.length; i++) {
         const delay = 600 + Math.floor(Math.random() * 800);
         await new Promise((resolve) => setTimeout(resolve, delay));
-        setMessages((prev) => [...prev, assistantMsgs[i]]);
+        const msg = assistantMsgs[i];
+        // Add burn countdown to assistant message
+        msg.burnAt = Date.now() + BURN_DELAY;
+        setMessages((prev) => [...prev, msg]);
+        // Schedule auto-remove
+        scheduleBurn(msg.id);
         setPendingCount((prev) => prev - 1);
       }
 
@@ -178,6 +202,7 @@ export default function ChatPage({ params }) {
       >
         {messages.map((msg, idx) => {
           const isUser = msg.role === "user";
+          const isBurning = !isUser && msg.burnAt;
           return (
             <div key={msg.id || idx} style={{ marginBottom: 12, display: "flex", flexDirection: isUser ? "row-reverse" : "row", alignItems: "flex-start" }}>
               {!isUser && (
@@ -204,9 +229,11 @@ export default function ChatPage({ params }) {
                     fontSize: 15,
                     lineHeight: 1.5,
                     wordBreak: "break-word",
+                    position: "relative",
                   }}
                 >
                   {msg.content}
+                  {isBurning && <BurnCountdown burnAt={msg.burnAt} />}
                 </div>
                 <div
                   style={{
@@ -214,9 +241,16 @@ export default function ChatPage({ params }) {
                     color: "#b0b0b0",
                     marginTop: 3,
                     textAlign: isUser ? "right" : "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    justifyContent: isUser ? "flex-end" : "flex-start",
                   }}
                 >
                   {formatTime(msg.createdAt)}
+                  {isBurning && (
+                    <span style={{ fontSize: 10, color: "#ff6b6b", fontWeight: 500 }}>阅后即焚</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -393,6 +427,36 @@ export default function ChatPage({ params }) {
           40% { opacity: 1; }
         }
       `}</style>
+    </div>
+  );
+}
+
+// Countdown component for burn timer
+function BurnCountdown({ burnAt }) {
+  const [seconds, setSeconds] = useState(Math.max(0, Math.ceil((burnAt - Date.now()) / 1000)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((burnAt - Date.now()) / 1000));
+      setSeconds(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [burnAt]);
+
+  if (seconds <= 0) return null;
+
+  return (
+    <div style={{
+      position: "absolute",
+      top: 4,
+      right: 6,
+      fontSize: 10,
+      color: "#ff6b6b",
+      fontWeight: 500,
+      opacity: 0.8,
+    }}>
+      {seconds}s
     </div>
   );
 }
