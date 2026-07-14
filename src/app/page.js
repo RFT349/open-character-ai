@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -143,7 +143,6 @@ export default function HomePage() {
             setRedeemCode={setRedeemCode}
             redeemMsg={redeemMsg}
             onRedeem={handleRedeem}
-            onLogout={() => signOut()}
           />
         )}
       </div>
@@ -262,7 +261,7 @@ function ChatList({ chats, loading, onStartChat, router }) {
   );
 }
 
-function MyTab({ username, credits, redeemCode, setRedeemCode, redeemMsg, onRedeem, onLogout }) {
+function MyTab({ username, credits, redeemCode, setRedeemCode, redeemMsg, onRedeem }) {
   return (
     <div style={{ padding: "20px 16px" }}>
       {/* User info card */}
@@ -326,22 +325,6 @@ function MyTab({ username, credits, redeemCode, setRedeemCode, redeemMsg, onRede
         {redeemMsg && <div style={{ fontSize: 13, color: "#07C160", marginTop: 8 }}>{redeemMsg}</div>}
       </div>
 
-      {/* Logout button */}
-      <button
-        onClick={onLogout}
-        style={{
-          width: "100%",
-          height: 44,
-          background: "#fff",
-          color: "#e74c3c",
-          border: "none",
-          borderRadius: 12,
-          fontSize: 15,
-          cursor: "pointer",
-        }}
-      >
-        退出登录
-      </button>
     </div>
   );
 }
