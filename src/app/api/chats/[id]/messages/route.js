@@ -13,34 +13,57 @@ export async function GET(req, { params }) {
     const { id } = await params;
 
     let messages = await prisma.message.findMany({
-      where: { chatId: id },
+      where: { chatId: id, role: "user" },
       orderBy: { createdAt: "asc" },
     });
-
-    if (messages.length === 0) {
-      const chat = await prisma.chat.findUnique({
-        where: { id },
-        include: { character: true },
-      });
-
-      if (!chat) {
-        return NextResponse.json({ error: "Chat not found" }, { status: 404 });
-      }
-
-      const greetingMessage = await prisma.message.create({
-        data: {
-          chatId: id,
-          role: "assistant",
-          content: chat.character.greeting,
-        },
-      });
-
-      messages = [greetingMessage];
-    }
 
     return NextResponse.json({ messages });
   } catch (error) {
     console.error("[MESSAGES_GET_ERROR]", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: burn after reading - permanently delete messages by IDs
+export async function DELETE(req, { params }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await req.json();
+    const { messageIds } = body;
+
+    if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+      return NextResponse.json({ error: "messageIds required" }, { status: 400 });
+    }
+
+    // Verify all messages belong to this chat and the chat belongs to the user
+    const chat = await prisma.chat.findUnique({
+      where: { id },
+      include: { messages: { where: { id: { in: messageIds } } } },
+    });
+
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    if (chat.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const result = await prisma.message.deleteMany({
+      where: {
+        id: { in: messageIds },
+        chatId: id,
+      },
+    });
+
+    return NextResponse.json({ deleted: result.count });
+  } catch (error) {
+    console.error("[MESSAGES_DELETE_ERROR]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -146,7 +169,7 @@ export async function POST(req, { params }) {
     // Build enhanced system prompt
     const charName = chat.character.name;
     const basePrompt = chat.character.systemPrompt;
-    const splitInstruction = "\nIMPORTANT:\n- Reply to the USER's latest message naturally based on the above recent conversation history.\n- Do not repeat the history.\n- You are roleplaying as " + charName + ". Write your response directly in first-person as " + charName + ".\n- Do NOT start your response with \"User: ...\", \"" + charName + ": ...\", or similar labels. Just output the dialogue itself.\n- NEVER use parentheses, brackets, asterisks or any markup to indicate actions, expressions, or body language. Examples of FORBIDDEN patterns: (微笑), （叹气）, *偷笑*, 【脸红】. Just write the spoken words only.\n- Write like a real person chatting on WeChat. DO NOT use these symbols: ~ (波浪号), …… or ...... (省略号), —— (破折号). They look fake and AI-generated.\n- DO NOT overuse sentence-final particles like 呢, 呀, 哦, 啦, 嘛. Only use them when it genuinely sounds natural, not as a habit. Most messages should end without these particles.\n- Split your response into 2-5 short separate messages, using ||| as the separator between each message. Each message should be a natural short text like a real WeChat message. For example: 嗯嗯|||在忙吗|||想你了";
+    const splitInstruction = "\nIMPORTANT:\n- Reply to the USER's latest message naturally based on the above recent conversation history.\n- Do not repeat the history.\n- You are roleplaying as " + charName + ". Write your response directly in first-person as " + charName + ".\n- Do NOT start your response with \"User: ...\", \"" + charName + ": ...\", or similar labels. Just output the dialogue itself.\n- NEVER use parentheses, brackets, asterisks or any markup to indicate actions, expressions, or body language. Examples of FORBIDDEN patterns: (微笑), （叹气）, *偷笑*, 【脸红】. Just write the spoken words only.\n- Write like a real person chatting on WeChat. DO NOT use these symbols: ~ (波浪号), …… or ...... (省略号), —— (破折号). They look fake and AI-generated.\n- DO NOT overuse sentence-final particles like 呢, 呀, 哦, 啦, 嘛. Only use them when it genuinely sounds natural, not as a habit. Most messages should end without these particles.\n- Split your response into 2-5 short separate messages, using ||| as the separator between each message. Each message should be natural short text like a real WeChat message. For example: 嗯嗯|||在忙吗|||想你了";
     const enhancedSystemPrompt = basePrompt + historyBlock + splitInstruction + openDegreeHint;
 
     // Call DeepSeek API

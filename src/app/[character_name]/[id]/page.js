@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-const BURN_DELAY = 60000; // 60秒阅后即焚
+const BURN_DELAY = 60000; // 60 seconds
 
 export default function ChatPage({ params }) {
   const resolvedParams = use(params);
@@ -16,9 +16,9 @@ export default function ChatPage({ params }) {
   const [isTyping, setIsTyping] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [creditModal, setCreditModal] = useState(null);
-  const [burnTimers, setBurnTimers] = useState({});
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const burnTimersRef = useRef({}); // track burn timers by message id
 
   useEffect(() => {
     if (authStatus === "authenticated") {
@@ -34,18 +34,11 @@ export default function ChatPage({ params }) {
     }
   }, [messages, isTyping]);
 
-  // Clean up burn timers on unmount
+  // Cleanup burn timers on unmount
   useEffect(() => {
     return () => {
-      Object.values(burnTimers).forEach(id => clearTimeout(id));
+      Object.values(burnTimersRef.current).forEach(clearTimeout);
     };
-  }, []);
-
-  const scheduleBurn = useCallback((msgId) => {
-    const timer = setTimeout(() => {
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
-    }, BURN_DELAY);
-    setBurnTimers((prev) => ({ ...prev, [msgId]: timer }));
   }, []);
 
   const fetchMessages = async () => {
@@ -53,13 +46,41 @@ export default function ChatPage({ params }) {
       const res = await fetch("/api/chats/" + chatId + "/messages");
       if (res.ok) {
         const data = await res.json();
-        // Only load user messages, assistant messages are burned
-        const userOnly = (data.messages || []).filter((m) => m.role === "user");
-        setMessages(userOnly);
+        setMessages(data.messages || []);
       }
     } catch (err) {
       console.error("Failed to fetch messages", err);
     }
+  };
+
+  // Burn messages: remove from frontend AND delete from database
+  const burnMessages = async (messageIds) => {
+    if (!messageIds || messageIds.length === 0) return;
+
+    // Remove from frontend state immediately
+    setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+
+    // Delete from database
+    try {
+      await fetch("/api/chats/" + chatId + "/messages", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageIds: messageIds }),
+      });
+    } catch (err) {
+      console.error("[BURN_DELETE_ERROR]", err);
+    }
+  };
+
+  // Schedule burn for assistant messages
+  const scheduleBurn = (messageIds) => {
+    messageIds.forEach((id) => {
+      if (burnTimersRef.current[id]) return; // already scheduled
+      burnTimersRef.current[id] = setTimeout(() => {
+        burnMessages([id]);
+        delete burnTimersRef.current[id];
+      }, BURN_DELAY);
+    });
   };
 
   const handleSend = async (e) => {
@@ -107,17 +128,19 @@ export default function ChatPage({ params }) {
 
       setPendingCount(assistantMsgs.length);
 
+      // Collect all assistant message IDs for burn scheduling
+      const burnQueue = [];
+
       for (let i = 0; i < assistantMsgs.length; i++) {
         const delay = 600 + Math.floor(Math.random() * 800);
         await new Promise((resolve) => setTimeout(resolve, delay));
-        const msg = assistantMsgs[i];
-        // Add burn countdown to assistant message
-        msg.burnAt = Date.now() + BURN_DELAY;
-        setMessages((prev) => [...prev, msg]);
-        // Schedule auto-remove
-        scheduleBurn(msg.id);
+        setMessages((prev) => [...prev, assistantMsgs[i]]);
+        burnQueue.push(assistantMsgs[i].id);
         setPendingCount((prev) => prev - 1);
       }
+
+      // Schedule burn for all assistant messages
+      scheduleBurn(burnQueue);
 
       setIsTyping(false);
     } catch (err) {
@@ -202,7 +225,6 @@ export default function ChatPage({ params }) {
       >
         {messages.map((msg, idx) => {
           const isUser = msg.role === "user";
-          const isBurning = !isUser && msg.burnAt;
           return (
             <div key={msg.id || idx} style={{ marginBottom: 12, display: "flex", flexDirection: isUser ? "row-reverse" : "row", alignItems: "flex-start" }}>
               {!isUser && (
@@ -229,11 +251,9 @@ export default function ChatPage({ params }) {
                     fontSize: 15,
                     lineHeight: 1.5,
                     wordBreak: "break-word",
-                    position: "relative",
                   }}
                 >
                   {msg.content}
-                  {isBurning && <BurnCountdown burnAt={msg.burnAt} />}
                 </div>
                 <div
                   style={{
@@ -241,16 +261,9 @@ export default function ChatPage({ params }) {
                     color: "#b0b0b0",
                     marginTop: 3,
                     textAlign: isUser ? "right" : "left",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    justifyContent: isUser ? "flex-end" : "flex-start",
                   }}
                 >
                   {formatTime(msg.createdAt)}
-                  {isBurning && (
-                    <span style={{ fontSize: 10, color: "#ff6b6b", fontWeight: 500 }}>阅后即焚</span>
-                  )}
                 </div>
               </div>
             </div>
@@ -427,36 +440,6 @@ export default function ChatPage({ params }) {
           40% { opacity: 1; }
         }
       `}</style>
-    </div>
-  );
-}
-
-// Countdown component for burn timer
-function BurnCountdown({ burnAt }) {
-  const [seconds, setSeconds] = useState(Math.max(0, Math.ceil((burnAt - Date.now()) / 1000)));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((burnAt - Date.now()) / 1000));
-      setSeconds(remaining);
-      if (remaining <= 0) clearInterval(interval);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [burnAt]);
-
-  if (seconds <= 0) return null;
-
-  return (
-    <div style={{
-      position: "absolute",
-      top: 4,
-      right: 6,
-      fontSize: 10,
-      color: "#ff6b6b",
-      fontWeight: 500,
-      opacity: 0.8,
-    }}>
-      {seconds}s
     </div>
   );
 }
