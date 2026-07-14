@@ -12,6 +12,16 @@ export async function GET(req, { params }) {
 
     const { id } = await params;
 
+    // Server-side burn: delete assistant messages older than 60 seconds
+    const burnCutoff = new Date(Date.now() - 60000);
+    await prisma.message.deleteMany({
+      where: {
+        chatId: id,
+        role: "assistant",
+        createdAt: { lt: burnCutoff },
+      },
+    });
+
     let messages = await prisma.message.findMany({
       where: { chatId: id },
       orderBy: { createdAt: "asc" },
