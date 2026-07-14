@@ -18,7 +18,7 @@ export default function ChatPage({ params }) {
   const [creditModal, setCreditModal] = useState(null);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
-  const burnTimersRef = useRef({}); // track burn timers by message id
+  const burnedRef = useRef(new Set()); // track already-burned message IDs
 
   useEffect(() => {
     if (authStatus === "authenticated") {
@@ -34,53 +34,49 @@ export default function ChatPage({ params }) {
     }
   }, [messages, isTyping]);
 
-  // Cleanup burn timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(burnTimersRef.current).forEach(clearTimeout);
-    };
-  }, []);
-
   const fetchMessages = async () => {
     try {
       const res = await fetch("/api/chats/" + chatId + "/messages");
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages || []);
+        const loaded = data.messages || [];
+        setMessages(loaded);
+
+        // Schedule burn for all assistant messages loaded from DB
+        const assistantIds = loaded.filter((m) => m.role === "assistant").map((m) => m.id);
+        assistantIds.forEach((id) => scheduleBurn(id));
       }
     } catch (err) {
       console.error("Failed to fetch messages", err);
     }
   };
 
-  // Burn messages: remove from frontend AND delete from database
-  const burnMessages = async (messageIds) => {
-    if (!messageIds || messageIds.length === 0) return;
+  // Burn a single message: remove from frontend AND delete from database
+  const burnMessage = async (msgId) => {
+    if (burnedRef.current.has(msgId)) return; // prevent double-burn
+    burnedRef.current.add(msgId);
 
-    // Remove from frontend state immediately
-    setMessages((prev) => prev.filter((m) => !messageIds.includes(m.id)));
+    // Remove from frontend state
+    setMessages((prev) => prev.filter((m) => m.id !== msgId));
 
     // Delete from database
     try {
       await fetch("/api/chats/" + chatId + "/messages", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: messageIds }),
+        body: JSON.stringify({ messageIds: [msgId] }),
       });
     } catch (err) {
       console.error("[BURN_DELETE_ERROR]", err);
     }
   };
 
-  // Schedule burn for assistant messages
-  const scheduleBurn = (messageIds) => {
-    messageIds.forEach((id) => {
-      if (burnTimersRef.current[id]) return; // already scheduled
-      burnTimersRef.current[id] = setTimeout(() => {
-        burnMessages([id]);
-        delete burnTimersRef.current[id];
-      }, BURN_DELAY);
-    });
+  // Schedule burn for a single assistant message
+  const scheduleBurn = (msgId) => {
+    if (burnedRef.current.has(msgId)) return;
+    setTimeout(() => {
+      burnMessage(msgId);
+    }, BURN_DELAY);
   };
 
   const handleSend = async (e) => {
@@ -128,19 +124,13 @@ export default function ChatPage({ params }) {
 
       setPendingCount(assistantMsgs.length);
 
-      // Collect all assistant message IDs for burn scheduling
-      const burnQueue = [];
-
       for (let i = 0; i < assistantMsgs.length; i++) {
         const delay = 600 + Math.floor(Math.random() * 800);
         await new Promise((resolve) => setTimeout(resolve, delay));
         setMessages((prev) => [...prev, assistantMsgs[i]]);
-        burnQueue.push(assistantMsgs[i].id);
+        scheduleBurn(assistantMsgs[i].id); // schedule burn for each new message
         setPendingCount((prev) => prev - 1);
       }
-
-      // Schedule burn for all assistant messages
-      scheduleBurn(burnQueue);
 
       setIsTyping(false);
     } catch (err) {
