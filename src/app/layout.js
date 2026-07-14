@@ -2,7 +2,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import config from "@/lib/config";
-import { Analytics } from "@vercel/analytics/react";
+import Script from "next/script";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,13 +32,19 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="en" className={`h-full scroll-smooth ${inter.variable} ${outfit.variable}`} data-theme={theme}>
+      <head>
+        <Script
+          src="https://_vercel/insights/script.js"
+          strategy="afterInteractive"
+          data-project-id="prj_ZrwUnnBA33XVuAUfL0cM4Z5zEFuj"
+        />
+      </head>
       <body
         className={`${inter.className} min-h-full flex flex-col antialiased bg-bg-page text-primary-text`}
       >
         <Providers>
           <main className="relative z-10 flex-1 flex flex-col">{children}</main>
         </Providers>
-        <Analytics />
       </body>
     </html>
   );
