@@ -2,6 +2,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import config from "@/lib/config";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,8 +38,8 @@ export default function RootLayout({ children }) {
         <Providers>
           <main className="relative z-10 flex-1 flex flex-col">{children}</main>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
 }
-
