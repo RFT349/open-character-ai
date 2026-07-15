@@ -15,8 +15,8 @@ const outfit = Outfit({
 });
 
 export const metadata = {
-  title: "Open Character AI - Futuristic Persona Chat Portal",
-  description: "Open-source Character.AI alternative — chat with high-fidelity pre-defined or custom-created AI personas, with per-chat LLM tuning, powered by Next.js, Prisma, and Supabase.",
+  title: "专属空间",
+  description: "羊顺利的专属空间",
 };
 
 
